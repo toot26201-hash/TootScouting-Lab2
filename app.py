@@ -4,32 +4,48 @@ import plotly.express as px
 
 st.set_page_config(page_title="TootScouting Dashboard", layout="wide")
 
-# تحميل ملف الـ CSV اللي فيه الأحداث
-df = pd.read_csv("Untitled spreadsheet.xlsx - Sheet1.csv")
-df.columns = df.columns.str.strip()
+# دالة ذكية لقراءة الملف المتعدد الفئات
+def load_and_clean_data(file_path):
+    # قراءة الملف كـ نص (CSV)
+    with open(file_path, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+    
+    data = []
+    current_category = None
+    for line in lines:
+        if line.startswith("CATEGORY:"):
+            current_category = line.split(":")[1].strip()
+        elif ";" in line and "Name" not in line and current_category:
+            parts = line.strip().split(";")
+            data.append([current_category] + parts)
+            
+    return pd.DataFrame(data)
 
 st.title("📊 TootScouting Performance Dashboard")
 
-# 1. فلاتر جانبية احترافية
-st.sidebar.header("الفلاتر")
-selected_player = st.sidebar.multiselect("اختر اللاعبين:", df['Players'].dropna().unique())
-if selected_player:
-    df = df[df['Players'].isin(selected_player)]
-
-# 2. كروت المؤشرات (Metrics) اللي في الصورة
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("إجمالي الأحداث", len(df))
-col2.metric("التمريرات", len(df[df['Event Type'] == 'Pass']))
-col3.metric("الاستخلاصات", len(df[df['Event Type'] == 'extraction ']))
-col4.metric("التسديدات", len(df[df['Event Type'] == 'Shot']))
-
-# 3. الرسم البياني (Bar Chart) - تفاعلي
-st.subheader("توزيع الأحداث حسب النوع")
-event_counts = df['Event Type'].value_counts().reset_index()
-event_counts.columns = ['Event', 'Count']
-fig = px.bar(event_counts, x='Event', y='Count', color='Count', color_continuous_scale='Blues')
-st.plotly_chart(fig, use_container_width=True)
-
-# 4. جدول التفاصيل
-st.subheader("تفاصيل اللقطات")
-st.dataframe(df[['Event Time (mm:ss)', 'Event Type', 'Players', 'Tags']], use_container_width=True)
+# تحميل الداتا
+try:
+    df = load_and_clean_data("EPS-honka..csv")
+    # تسمية الأعمدة (بناءً على شكل الملف)
+    df.columns = ['Category', 'Event', 'Time', 'Start', 'Stop', 'Team', 'Player', 'Metric1', 'Metric2', 'Metric3', 'Metric4', 'Metric5', 'Metric6', 'Metric7', 'Metric8', 'Metric9', 'Metric10', 'Metric11']
+    
+    # فلتر اللاعبين
+    players = df['Player'].dropna().unique()
+    selected_player = st.sidebar.multiselect("اختر اللاعب:", players)
+    
+    if selected_player:
+        df = df[df['Player'].isin(selected_player)]
+    
+    # عرض الأرقام فوق (Metrics)
+    col1, col2, col3 = st.columns(3)
+    col1.metric("إجمالي الأحداث", len(df))
+    col2.metric("عدد التمريرات", len(df[df['Category'] == 'Pass']))
+    col3.metric("عدد التسديدات", len(df[df['Category'] == 'SH/A']))
+    
+    # الرسم البياني
+    st.subheader("توزيع الأحداث")
+    fig = px.bar(df['Category'].value_counts().reset_index(), x='index', y='Category')
+    st.plotly_chart(fig, use_container_width=True)
+    
+except Exception as e:
+    st.error(f"حدث خطأ أثناء قراءة الملف: {e}")
