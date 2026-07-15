@@ -1,1 +1,7 @@
+streamlit
 matplotlib
+pandas
+numpy
+seaborn
+openpyxl
+requests
